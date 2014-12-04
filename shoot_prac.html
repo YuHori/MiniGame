@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+
+    <title>球発射</title>
+
+    <style type="text/css">
+        #canvas {
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id = "canvas" width="400" height="400">
+
+</canvas>
+<br/>
+
+<select id="selecter">
+    <option value="sample1">サンプル1</option>
+    <option value="sample2">サンプル2</option>
+    <option value="sample3">サンプル3</option>
+</select>
+
+<button id="shoot_btn">発射</button>
+
+<script type="text/javascript">
+
+    // btn要素取得
+    var btn = document.getElementById("shoot_btn");
+    btn.onclick = function() {
+
+        var canvas = document.getElementById("canvas");
+        var selecter = document.getElementById("selecter");
+
+        var ctx = null;
+        var timer = 0;
+        var counter = 0;
+        if(ctx = canvas.getContext("2d")) {
+
+            ctx.fillStyle = "#ceceff";//描画色を指定
+
+            // とるあえずボールを一つ用意
+            var point = {x:200,y:400};
+
+            var loop = function(){
+
+                // selecterに応じて分岐
+                switch (selecter.selectedIndex) {
+                    case 0:
+                        point.y -= 1;
+                        break;
+                    case 1:
+                        point.y -= 4;
+                        break;
+                    case 2:
+                        point.y -=1;
+                        point.x += Math.sin(counter * 4) * 30;
+                }
+
+
+                counter++;
+                //描画処理を呼び出す
+                draw(point.x,point.y);
+                //タイマー(一度クリアしてから再設定。)
+                clearTimeout(timer);
+                timer = setTimeout(loop,10);
+            }
+
+            function draw(x,y){
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.fillRect(x-2,y-2,4,4);
+            }
+
+            // loop
+            loop();
+
+        }
+    }
+
+
+</script>
+
+</body>
+</html>
