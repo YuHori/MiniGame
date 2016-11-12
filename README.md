@@ -8,7 +8,7 @@ javascriptの練習。
 
 ## breakout
 ブロック崩し（遅い）  
-[ブロック崩し1](https://yuhori.github.io/MiniGame/breakout.html)
+[ブロック崩し1](https://yuhori.github.io/MiniGame/breakout.html)  
 [ブロック崩し2(バグ入り)](https://yuhori.github.io/MiniGame/breakout_with_bug.html)
 
 ## remscript
