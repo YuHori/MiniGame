@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>マインスイーパー</title>
+</head>
+<body>
+<h1>マインスイーパー</h1>
+<canvas id="cvs"></canvas>
+<script type="text/javascript">
+  //config
+  var CONFIG = {
+    // panel
+    PANEL_WIDTH  : 20,
+    PANEL_HEIGHT : 20,
+    PANEL_W_NUM  : 10,
+    PANEL_H_NUM  : 10,
+
+    // bomb
+    BOMB_NUM     : 10,
+
+    // canvas
+    CANVAS_WIDTH : 600,
+    CANVAS_HEIGHT: 600,
+  };
+
+  //進行方向
+  var DIRECT = {
+    NONE       : 0,
+    UP         : 1,
+    UP_RIGHT   : 2,
+    RIGHT      : 3,
+    DOWN_RIGHT : 4,
+    DOWN       : 5,
+    DOWN_LEFT  : 6,
+    LEFT       : 7,
+    UP_LEFT    : 8,
+    UP         : 9,
+  };
+
+  //game state
+  var GAME_STATE = {
+    RUNNING  : 0,
+    GAMEOVER : 1,
+  };
+
+  //color
+  var COLOR = {
+    NONE    : 'rgb(256, 256, 256)',   // 0
+    YELLOW  : 'rgb(255, 204, 0)',     // 1 
+    BLUE    : 'rgb(0, 0, 255)',       // 2
+    RED     : 'rgb(192, 80, 77)',     // 3
+    PINK    : 'rgb(255, 0, 255)',     // 4
+    GREEN   : 'rgb(0, 255, 0)',       // 5
+    ORANGE  : 'rgb(255, 102, 51)',    // 6
+    PURPLE  : 'rgb(204, 0, 255)',     // 7
+    BLACK   : 'rgb(0, 0, 0)',         // 8
+    BOMB    : 'rgb(30, 20, 80)',      // 9
+    WALL    : 'rgb(180, 180, 180)',   // 10
+    FLAG    : 'rgb(120, 180, 180)',   // 11
+  };
+  var COLOR_MAP = Object.keys(COLOR);
+
+  //inner_state
+  var INNER_STATE = {
+    NONE    : 0,
+    ONE     : 1,
+    TWO     : 2,
+    THREE   : 3,
+    FOUR    : 4,
+    FIVE    : 5,
+    SIX     : 6,
+    SEVEN   : 7,
+    EIGHT   : 8,
+    BOMB    : 9,
+    WALL    : 10,
+    FLAG    : 11,
+  }
+
+  //outer_state
+  var OUTER_STATE = {
+    OPEN    : 0,
+    CLOSE   : 1,
+    FLAG    : 2,
+  };
+
+  //image
+  var IMAGE = {
+    NONE    : 'img/none.png',
+    ONE     : 'img/1.png',
+    TWO     : 'img/2.png',
+    THREE   : 'img/3.png',
+    FOUR    : 'img/4.png',
+    FIVE    : 'img/5.png',
+    SIX     : 'img/6.png',
+    SEVEN   : 'img/7.png',
+    EIGHT   : 'img/8.png',
+    BOMB    : 'img/bomb.png',
+    WALL    : 'img/wall.png',
+    //WALL    : 'img/flag.png',
+    FLAG    : 'img/flag.png',
+  }
+  var IMAGE_MAP = Object.keys(IMAGE);
+
+
+  //game
+  class Game {
+    constructor(ctx) {
+      this.panels = [];
+      this.ctx = ctx;
+    }
+    init() {
+      this.initPanel();
+      this.setBomb();
+      this.setNumber();
+    }
+    clearPanel() {
+      ctx.clearRect(0, 0, PANEL_W_NUM * PANEL_WIDTH, PANEL_H_NUM * PANEL_HEIGHT);
+    }
+    initPanel() {
+      //panelを初期化
+      for(var j=0;j<CONFIG.PANEL_H_NUM+2;j++) {
+        this.panels[j] = [];
+        for(var i=0;i<CONFIG.PANEL_W_NUM+2;i++) {
+          //壁
+          if (j == 0 || j == CONFIG.PANEL_H_NUM+1 || i == 0 || i == CONFIG.PANEL_W_NUM+1) {
+            this.panels[j][i] = new Panel(i*CONFIG.PANEL_WIDTH, j*CONFIG.PANEL_HEIGHT, INNER_STATE.WALL,
+            OUTER_STATE.CLOSE, COLOR.WALL, this.ctx);
+          } else {
+            this.panels[j][i] = new Panel(i*CONFIG.PANEL_WIDTH, j*CONFIG.PANEL_HEIGHT, INNER_STATE.NONE,
+            OUTER_STATE.CLOSE, COLOR.NONE, this.ctx);
+          }
+        }
+      }
+    }
+    setBomb() {
+      //bombをセット
+      var bomb_count = 0;
+      while(bomb_count < CONFIG.BOMB_NUM) {
+        var rand_h = Math.floor(Math.random() * CONFIG.PANEL_H_NUM) + 1;
+        var rand_w = Math.floor(Math.random() * CONFIG.PANEL_W_NUM) + 1;
+
+        //bombがすでに設定されていなければ設定
+        if (this.panels[rand_h][rand_w].inner_state != INNER_STATE.BOMB) {
+          this.panels[rand_h][rand_w].inner_state = INNER_STATE.BOMB;
+          this.panels[rand_h][rand_w].color = COLOR.BOMB;
+          bomb_count += 1;
+        }
+      }
+    }
+    setNumber() {
+      //数字（ヒント）パネルセット
+      for(var j=1;j<this.panels.length-1;j++) {
+        for(var i=1;i<this.panels[j].length-1;i++) {
+          // 自分がbombなら数えない
+          if(this.panels[j][i].inner_state == INNER_STATE.BOMB) {
+            continue;
+          }
+          //その他
+          var bomb_count = this.countAroundBomb(i, j);
+          this.panels[j][i].inner_state = bomb_count; 
+          this.panels[j][i].color = COLOR[COLOR_MAP[bomb_count]];
+        }
+      }
+    }
+    countAroundBomb(x, y) {
+      //自分がbombなら数えない
+      if(this.panels[y][x].inner_state == INNER_STATE.BOMB) {
+        return INNER_STATE.BOMB;
+      }
+
+      //周囲のbombの個数を数える
+      var bomb_count = 0;
+      for(var j=-1;j<=1;j++) {
+        for(var i=-1;i<=1;i++) {
+          //自分は数えない
+          if(i == 0 && j == 0) {
+            continue;
+          }
+          if(this.panels[y+j][x+i].inner_state == INNER_STATE.BOMB) {
+            bomb_count += 1;
+          }
+        }
+      }
+      return bomb_count;
+    }
+    draw() {
+      for(var j=0;j<this.panels.length;j++) {
+        for(var i=0;i<this.panels[j].length;i++) {
+          this.panels[j][i].draw(this.ctx);
+        }
+      }
+    }
+    drawImage() {
+      for(var j=0;j<this.panels.length;j++) {
+        for(var i=0;i<this.panels[j].length;i++) {
+          this.panels[j][i].drawImage(this.ctx);
+        }
+      }
+    }
+    turnOver(x, y) {
+      //gameover確認
+      switch (this.panels[y][x].inner_state) {
+        case INNER_STATE.BOMB:
+          this.setAllBomb();
+          this.drawImage();
+          break;
+        case INNER_STATE.NONE:
+          //this.panels[y][x].turnOver();
+          this.openPanel(x, y);
+          break;
+        default:
+          this.panels[y][x].turnOver();
+          break;
+      }
+    }
+    setAllBomb() {
+      for(var j=0;j<this.panels.length;j++) {
+        for(var i=0;i<this.panels[j].length;i++) {
+          this.panels[j][i].inner_state = INNER_STATE.BOMB;
+          this.panels[j][i].outer_state = OUTER_STATE.OPEN;
+        }
+      }
+    }
+    openPanel(x, y) {
+      //範囲外は何もしない
+      if (x < 1 || CONFIG.PANEL_W_NUM < x || y < 1 || CONFIG.PANEL_H_NUM < y) {
+        return;
+      }
+
+      //爆弾の場合も何もしない
+      if (this.panels[y][x].inner_state == INNER_STATE.BOMB) {
+        return;
+      }
+
+      //すでにそのパネルが開かれている場合も何もしない
+      if (this.panels[y][x].outer_state == OUTER_STATE.OPEN) {
+        return;
+      }
+
+      //パネルを開く
+      this.panels[y][x].turnOver();
+      if (this.panels[y][x].inner_state == INNER_STATE.NONE) {
+        this.openPanel(x, y-1, DIRECT.DOWN);
+        this.openPanel(x, y+1, DIRECT.UP);
+        this.openPanel(x-1, y, DIRECT.LEFT);
+        this.openPanel(x+1, y, DIRECT.RIGHT);
+      }
+    }
+  }
+
+  //panel
+  class Panel {
+    constructor(x, y, inner_state, outer_state, color, ctx) {
+      this.width = CONFIG.PANEL_WIDTH;
+      this.height = CONFIG.PANEL_HEIGHT;
+      this.x = x;
+      this.y = y;
+      this.inner_state = inner_state;
+      this.outer_state = outer_state;
+      this.color = color;
+      this.ctx = ctx;
+
+      //画像オブジェクト
+      this.image = new Image();
+      this.image.onload = function() {
+        //読み込み時 (srcがセットされた時) 呼ばれる
+        ctx.drawImage(this, x, y, CONFIG.PANEL_WIDTH, CONFIG.PANEL_HEIGHT);
+      };
+    }
+    draw() {
+      this.ctx.fillStyle = this.color;
+      this.ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+    drawImage() {
+      this.clearPanel();
+      switch (this.outer_state) {
+        case OUTER_STATE.OPEN:
+          this.image.src = IMAGE[IMAGE_MAP[this.inner_state]];
+          break;
+        case OUTER_STATE.CLOSE:
+          this.image.src = IMAGE.WALL;
+          break;
+        case OUTER_STATE.FLAG:
+          this.image.src = IMAGE.FLAG;
+          break;
+      }
+    }
+    turnOver() {
+      if (this.outer_state != OUTER_STATE.OPEN) {
+        this.outer_state = OUTER_STATE.OPEN;
+        this.drawImage();
+      }
+    }
+    clearPanel() {
+      ctx.clearRect(this.x, this.y, this.width, this.height);
+    }
+  }
+
+
+  //test
+  var cvs = document.getElementById("cvs");
+  cvs.width = CONFIG.CANVAS_WIDTH;
+  cvs.height = CONFIG.CANVAS_HEIGHT;
+
+  if (cvs) {
+    var ctx = cvs.getContext("2d");
+
+    var game = new Game(ctx);
+    game.init();
+    //game.draw();
+    game.drawImage();
+
+    //イベントリスナ登録
+    cvs.addEventListener("click" , function(e) {
+      // clickされた位置を計算 (canvasの左上が基準)
+      var x = Math.floor((e.clientX - cvs.offsetLeft) / CONFIG.PANEL_WIDTH);
+      var y = Math.floor((e.clientY - cvs.offsetTop) / CONFIG.PANEL_HEIGHT);
+      game.turnOver(x, y);
+    });
+  }
+
+</script>
+</body>
+</html>
