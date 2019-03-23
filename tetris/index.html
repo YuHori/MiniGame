@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>テトリス</title>
+</head>
+<body>
+<h1>テトリス</h1>
+<canvas id="canvas" width=200 height=200></canvas>
+<script type="text/javascript">
+  //設定
+  var SETTINGS = {
+    // field
+    FIELD_WIDTH  : 10,
+    FIELD_HEIGHT : 10,
+
+    // block
+    BLOCK_WIDTH  : 10,
+    BLOCK_HEIGHT : 10,
+
+    // 時間
+    INTERVAL     : 1000, //1000ms(1秒)ごと更新
+  }
+
+  //キーイベント
+  var KEY_EVENT = {
+    SPACE : 32,
+    LEFT  : 37,
+    UP    : 38,
+    RIGHT : 39,
+    DOWN  : 40,
+  };
+
+  //ゲームステータス
+  var GAME_STATUS = {
+    BEFORE_INIT : 0,
+    RUNNING     : 1,
+    PAUSE       : 2,
+    GAMEOVER    : 3,
+  };
+
+  //色
+  var COLOR = {
+    NONE    : 'rgb(256, 256, 256)',
+    RED     : 'rgb(192, 80, 77)',
+    YELLOW  : 'rgb(255, 204, 0)',
+    PINK    : 'rgb(255, 0, 255)',
+    GREEN   : 'rgb(0, 255, 0)',
+    BLUE    : 'rgb(0, 0, 255)',
+    ORANGE  : 'rgb(255, 102, 51)',
+    PURPLE  : 'rgb(204, 0, 255)',
+    WALL    : 'rgb(0, 0, 0)',
+  };
+  var COLOR_MAP = Object.keys(COLOR);
+
+  //ブロックパターン
+  var BLOCK_PATTERN = {
+    1: [
+      [
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+    ],
+    2: [
+      [
+        [0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 1, 1, 1],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 1, 0],
+        [0, 0, 1, 0],
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+      ],
+    ],
+    3: [
+      [
+        [0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [0, 0, 1, 0],
+        [0, 0, 1, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [0, 0, 1, 0],
+        [1, 1, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 0, 0],
+        [0, 1, 0, 0],
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [0, 1, 1, 1],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+      ],
+    ],
+    4: [
+      [
+        [0, 1, 0, 0],
+        [0, 1, 1, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [1, 1, 1, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 0, 0],
+        [1, 1, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+    ],
+    5: [
+      [
+        [0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+      ],
+    ], 
+    6: [
+      [
+        [0, 1, 0, 0],
+        [0, 1, 1, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 1, 0],
+        [1, 1, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 0, 0],
+        [0, 1, 1, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 1, 0],
+        [1, 1, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+    ], 
+    7: [
+      [
+        [0, 0, 1, 0],
+        [0, 1, 1, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 1, 0],
+        [0, 0, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 1, 0],
+        [0, 1, 1, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 1, 1, 0],
+        [0, 0, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+    ],
+  };
+  var BLOCK_PATTERN_LENGTH = Object.keys(BLOCK_PATTERN);
+
+  //回転パターン
+  var ROTATE_PATTERN = {
+    ONE   : 0,
+    TWO   : 1,
+    THREE : 2,
+    FOUR  : 3,
+  };
+
+
+  //ブロッククラス
+  class Block {
+    //コンストラクタ
+    constructor(x, y, color) {
+      this.x = x;
+      this.y = y;
+      this.color = color;
+      this.width = SETTINGS.BLOCK_WIDTH;
+      this.height = SETTINGS.BLOCK_HEIGHT;
+    }
+
+    //描画
+    draw(ctx) {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+  }
+
+  //ゲームクラス
+  class Game {
+    constructor(ctx) {
+      this.field = [];
+      this.moving_block = [];
+      this.rotate_pattern = ROTATE_PATTERN.ONE;
+      this.color_map_key = 0;
+      this.ctx = ctx;
+    }
+
+    //初期化
+    init() {
+      //フィールド初期化
+      this._init_field();
+
+      //動くブロック初期化
+      this._init_moving_block();
+    }
+
+    //フィールド初期化
+    _init_field() {
+      this.field = [];
+      
+      //フィールドをセット
+      for (var j = 0; j < SETTINGS.FIELD_HEIGHT + 2; j++) {
+        this.field[j] = [];
+        for (var i = 0; i < SETTINGS.FIELD_WIDTH + 2; i++) {
+          this.field[j][i] = new Block(i * SETTINGS.BLOCK_WIDTH, j * SETTINGS.BLOCK_HEIGHT, COLOR.NONE);
+        }
+      }
+
+      // 壁をセット
+      for (var j = 0; j < SETTINGS.FIELD_HEIGHT + 2; j++) {
+        this.field[j][0].color = COLOR.WALL; 
+        this.field[j][SETTINGS.FIELD_WIDTH + 1].color = COLOR.WALL; 
+      }
+      for (var i = 0; i < SETTINGS.FIELD_WIDTH + 2; i++) {
+        this.field[SETTINGS.FIELD_HEIGHT + 1][i].color = COLOR.WALL; 
+      }
+    }
+
+    //描画
+    draw() {
+      this._draw_field();
+      this._draw_moving_block();
+    }
+
+    //フィールド描画
+    _draw_field() {
+      for (var j = 0; j < SETTINGS.FIELD_HEIGHT + 2; j++) {
+        for (var i = 0; i < SETTINGS.FIELD_WIDTH + 2; i++) {
+          this.field[j][i].draw(this.ctx);
+        }
+      }
+    }
+    
+    //動くブロック初期化
+    _init_moving_block() {
+      //色決定
+      var rand = Math.floor(Math.random() * (COLOR_MAP.length - 2) + 1);
+      var color_pattern = COLOR[COLOR_MAP[rand]];
+      var block_pattern = BLOCK_PATTERN[rand][this.rotate_pattern];
+      this.color_map_key = rand;
+      this._set_moving_block(color_pattern, block_pattern);
+    }
+
+    //ブロックを設定
+    _set_moving_block(_color_pattern, _block_pattern) {
+      for (var j = 0; j < 4; j++) {
+        this.moving_block[j] = [];
+        for (var i = 0; i < 4; i++) {
+          if (_block_pattern[j][i] == 1) {
+            this.moving_block[j][i] = new Block(i * SETTINGS.BLOCK_WIDTH, j * SETTINGS.BLOCK_HEIGHT, _color_pattern);
+          } else {
+            this.moving_block[j][i] = new Block(i * SETTINGS.BLOCK_WIDTH, j * SETTINGS.BLOCK_HEIGHT, COLOR.NONE);
+          }
+        }
+      }
+    }
+
+    //動くブロック描画
+    _draw_moving_block() {
+      for (var j = 0; j < 4; j++) {
+        for (var i = 0; i < 4; i++) {
+          //blockがあるところだけ描画
+          if (this.moving_block[j][i].color != COLOR.NONE) {
+            this.moving_block[j][i].draw(this.ctx);
+          }
+        }
+      }
+    }
+
+    //ブロックを回転させる
+    rotate_block() {
+      switch (this.rotate_pattern) {
+        case ROTATE_PATTERN.ONE:
+          var color_pattern = COLOR[COLOR_MAP[this.color_map_key]];
+          var block_pattern = BLOCK_PATTERN[this.color_map_key][ROTATE_PATTERN.TWO];
+          this._set_moving_block(color_pattern, block_pattern);
+          this.rotate_pattern = ROTATE_PATTERN.TWO;
+          break;
+        case ROTATE_PATTERN.TWO:
+          var color_pattern = COLOR[COLOR_MAP[this.color_map_key]];
+          var block_pattern = BLOCK_PATTERN[this.color_map_key][ROTATE_PATTERN.THREE];
+          this._set_moving_block(color_pattern, block_pattern);
+          this.rotate_pattern = ROTATE_PATTERN.THREE;
+          break;
+        case ROTATE_PATTERN.THREE:
+          var color_pattern = COLOR[COLOR_MAP[this.color_map_key]];
+          var block_pattern = BLOCK_PATTERN[this.color_map_key][ROTATE_PATTERN.FOUR];
+          this._set_moving_block(color_pattern, block_pattern);
+          this.rotate_pattern = ROTATE_PATTERN.FOUR;
+          break;
+        case ROTATE_PATTERN.FOUR:
+          var color_pattern = COLOR[COLOR_MAP[this.color_map_key]];
+          var block_pattern = BLOCK_PATTERN[this.color_map_key][ROTATE_PATTERN.ONE];
+          this._set_moving_block(color_pattern, block_pattern);
+          this.rotate_pattern = ROTATE_PATTERN.ONE;
+          break;
+      }
+    }
+
+    //ブロックを動かす
+    move_moving_block(key_code) {
+      switch (key_code) {
+        case KEY_EVENT.SPACE:
+          this.rotate_block();
+          this.draw();
+          break;
+        case KEY_EVENT.LEFT:
+          for (var j = 0; j < 4; j++) {
+            for (var i = 0; i < 4; i++) {
+              this.moving_block[j][i].x -= this.moving_block[j][i].width;
+            }
+          }
+          break;
+        case KEY_EVENT.UP:
+          for (var j = 0; j < 4; j++) {
+            for (var i = 0; i < 4; i++) {
+              this.moving_block[j][i].y -= this.moving_block[j][i].height;
+            }
+          }
+          break;
+        case KEY_EVENT.RIGHT:
+          for (var j = 0; j < 4; j++) {
+            for (var i = 0; i < 4; i++) {
+              this.moving_block[j][i].x += this.moving_block[j][i].width;
+            }
+          }
+          break;
+        case KEY_EVENT.DOWN:
+          for (var j = 0; j < 4; j++) {
+            for (var i = 0; i < 4; i++) {
+              this.moving_block[j][i].y += this.moving_block[j][i].height;
+            }
+          }
+          break;
+      }
+    }
+  }
+
+  //描画
+  var canvas = document.getElementById("canvas");
+  var ctx = canvas.getContext("2d");
+  if(ctx) {
+    //変数
+    var timer;
+    var game_status = GAME_STATUS.BEFORE_INIT;
+
+    //初期化
+    var game = new Game(ctx);
+    game.init();
+    game.draw();
+
+    //イベントリスナ登録
+    document.addEventListener("keydown" , function(e) {
+      game.move_moving_block(e.keyCode);
+      game.draw();
+    });
+
+    //TODO
+    //stop counter
+    var stop_counter = 0;
+    var max_num = 4;
+    //TODO
+
+
+    //メインループ
+    game_status = GAME_STATUS.RUNNING;
+    timer = setInterval(function() {
+
+      //ブロックを落とす
+      game.move_moving_block(KEY_EVENT.DOWN)
+      game.draw();
+
+      //メイン処理
+      stop_counter += 1;
+      if (stop_counter > max_num) {
+        game_status = GAME_STATUS.GAMEOVER;
+        //alert("GAME OVER");
+      };
+
+      //ステータス
+      if (game_status != GAME_STATUS.RUNNING) {
+        //RUNNING以外ではループを停止
+        clearInterval(timer);
+      }
+    }, SETTINGS.INTERVAL);
+  }
+</script>
+</body>
+</html>
